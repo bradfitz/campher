@@ -2,7 +2,7 @@ _cgo*
 _go_*
 *~
 perl/_obj
-perl/cgo.cgo2.o
+perl/campher.cgo2.o
 6.out
 _gotest_*
 _test*

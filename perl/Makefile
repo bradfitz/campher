@@ -15,8 +15,7 @@
 include $(GOROOT)/src/Make.inc
 
 TARG=github.com/bradfitz/campher/perl
-GOFILES=perl.go
-CGOFILES=cgo.go
+CGOFILES=campher.go
 
 include $(GOROOT)/src/Make.pkg
 

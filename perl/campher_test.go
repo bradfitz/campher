@@ -18,4 +18,7 @@ func TestPerl(t *testing.T) {
 	if e, g := 123, perl.EvalInt("$foo"); e != g {
 		t.Errorf("$foo expected %d; got %d", e, g)
 	}
+	if e, g := "123", perl.EvalString("$foo"); e != g {
+		t.Errorf("$foo expected %q; got %q", e, g)
+	}
 }

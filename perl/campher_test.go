@@ -16,9 +16,18 @@ func TestPerl(t *testing.T) {
 
 	perl.Eval("$foo = 123;")
 	if e, g := 123, perl.EvalInt("$foo"); e != g {
-		t.Errorf("$foo expected %d; got %d", e, g)
+		t.Errorf("Int(123) expected %d; got %d", e, g)
 	}
 	if e, g := "123", perl.EvalString("$foo"); e != g {
-		t.Errorf("$foo expected %q; got %q", e, g)
+		t.Errorf("String(123) expected %q; got %q", e, g)
 	}
+
+	perl.Eval("$foo = 0.5;")
+	if e, g := 0, perl.EvalInt("$foo"); e != g {
+		t.Errorf("Int(0.5) expected %d; got %d", e, g)
+	}
+	if e, g := 0.5, perl.EvalFloat("$foo"); e != g {
+		t.Errorf("Int(0.5) expected %f; got %f", e, g)
+	}
+
 }

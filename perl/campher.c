@@ -43,3 +43,8 @@ static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_c
   *out_char = c;
   *out_len = len;
 }
+
+static NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
+  return SvNVx(sv);
+}
+

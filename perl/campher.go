@@ -53,3 +53,9 @@ func (ip *Interpreter) EvalString(str string) string {
 	C.campher_get_sv_string(ip.perl, sv, &cstr, &length)
 	return C.GoStringN(cstr, length)
 }
+
+func (ip *Interpreter) EvalFloat(str string) float64 {
+	sv := ip.Eval(str)
+	return float64(C.campher_get_sv_float(ip.perl, sv))
+}
+

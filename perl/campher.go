@@ -42,17 +42,14 @@ func (ip *Interpreter) Eval(str string) SV {
 }
 
 func (ip *Interpreter) EvalInt(str string) int {
-	ip.be_context()
-	cstr := C.CString(str)
-	defer C.free(unsafe.Pointer(cstr))
-	sv := C.campher_eval_pv(ip.perl, cstr)
+	sv := ip.Eval(str)
 	return int(C.campher_sv_int(ip.perl, sv))
 }
 
 func (ip *Interpreter) EvalString(str string) string {
-	ip.be_context()
-	cstr := C.CString(str)
-	defer C.free(unsafe.Pointer(cstr))
-	//sv := C.campher_eval_pv(ip.perl, cstr)
-	return "foo" // int(C.campher_sv_int(ip.perl, sv))
+	sv := ip.Eval(str)
+	var cstr *C.char
+	var length C.int
+	C.campher_get_sv_string(ip.perl, sv, &cstr, &length)
+	return C.GoStringN(cstr, length)
 }

@@ -30,4 +30,16 @@ func TestPerl(t *testing.T) {
 		t.Errorf("Int(0.5) expected %f; got %f", e, g)
 	}
 
+	perl.Eval("$val = 1;")
+	perl.Eval("$code = sub { $val = 42; };")
+	sv := perl.Eval("$code")
+	cv := sv.CV()
+	if cv == nil {
+		t.Fatalf("cv is nil")
+	}
+	cv.CallVoid()
+	if e, g := 42, perl.EvalInt("$val"); e != g {
+		t.Errorf("Int($val) expected %d; got %d", e, g)
+	}
+
 }

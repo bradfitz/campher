@@ -48,3 +48,15 @@ static NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
   return SvNVx(sv);
 }
 
+static svtype campher_get_sv_type(PerlInterpreter* my_perl, SV* sv) {
+  return SvTYPE(sv);
+}
+
+static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv) {
+  I32 flags = 0;
+  I32 ret;
+
+  PERL_SET_CONTEXT(my_perl); // TODO: is this needed?
+  flags |= G_VOID | G_NOARGS;
+  ret = call_sv(sv, flags);
+}

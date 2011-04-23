@@ -25,8 +25,32 @@ static void campher_set_context(PerlInterpreter* perl) {
  PERL_SET_CONTEXT(perl);
  }
 
+ static char *campher_embedding[] = { "", "-e", "0" };
+
+ static PerlInterpreter* campher_new_perl() {
+   PerlInterpreter* my_perl = perl_alloc();
+   PERL_SET_CONTEXT(my_perl);
+   perl_construct(my_perl);
+   perl_parse(my_perl, NULL, 3, campher_embedding, NULL);
+   PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
+   perl_run(my_perl);
+   return my_perl;
+ }
+
+ static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
+     return eval_pv(code, TRUE);
+ }
+
+static int campher_sv_int(PerlInterpreter* my_perl, SV* sv) {
+ return SvIVx(sv);
+}
+
 */
 import "C"
+
+import (
+	"unsafe"
+)
 
 func init() {
 	C.campher_init()
@@ -42,11 +66,22 @@ func (in *Interpreter) be_context() {
 
 func NewInterpreter() *Interpreter {
 	int := new(Interpreter)
-	int.perl = C.perl_alloc()
+	int.perl = C.campher_new_perl()
 	// TODO: set finalizer and stuff
-
-	int.be_context()
-	
-
 	return int
+}
+
+func (ip *Interpreter) Eval(str string) {
+	ip.be_context()
+	cstr := C.CString(str)
+	defer C.free(unsafe.Pointer(cstr))
+	C.campher_eval_pv(ip.perl, cstr);
+}
+
+func (ip *Interpreter) EvalInt(str string) int {
+	ip.be_context()
+	cstr := C.CString(str)
+	defer C.free(unsafe.Pointer(cstr))
+	sv := C.campher_eval_pv(ip.perl, cstr);
+	return int(C.campher_sv_int(ip.perl, sv));
 }

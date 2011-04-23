@@ -1,0 +1,5 @@
+_cgo*
+_go_*
+*~
+perl/_obj
+perl/cgo.cgo2.o

@@ -19,11 +19,23 @@ static void campher_set_context(PerlInterpreter* perl) {
 
 static char *campher_embedding[] = { "", "-e", "0" };
 
+static void xs_init (pTHX);
+
+EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
+
+EXTERN_C void
+xs_init(pTHX)
+{
+  char *file = __FILE__;
+  /* DynaLoader is a special case */
+  newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+}
+
 static PerlInterpreter* campher_new_perl() {
   PerlInterpreter* my_perl = perl_alloc();
   PERL_SET_CONTEXT(my_perl);
   perl_construct(my_perl);
-  perl_parse(my_perl, NULL, 3, campher_embedding, NULL);
+  perl_parse(my_perl, xs_init, 3, campher_embedding, NULL);
   PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
   perl_run(my_perl);
   return my_perl;

@@ -3,6 +3,7 @@ package perl
 import (
 	"log"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -114,6 +115,14 @@ func TestScalarCall(t *testing.T) {
 	}
 	if e, g := 0, perl.EvalInt("$want_array"); e != g {
 		t.Errorf("Int($want_array) got %d, expected %d", g, e)
+	}
+}
+
+func TestDynamicLoading(t *testing.T) {
+	perl := NewInterpreter()
+	got := perl.EvalString(`use Data::Dumper; Dumper([1, "two", {3 => 4}]);`)
+	if !strings.Contains(got, "$VAR1") {
+		t.Errorf("expected $VAR1 in string, got %q", got)
 	}
 }
 

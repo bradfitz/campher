@@ -14,6 +14,7 @@
 
 include $(GOROOT)/src/Make.inc
 
+PREREQ=campher.c
 TARG=github.com/bradfitz/campher/perl
 CGOFILES=campher.go
 

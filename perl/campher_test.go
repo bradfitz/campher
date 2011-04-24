@@ -50,19 +50,23 @@ func TestVoidCall(t *testing.T) {
 	perl := NewInterpreter()
 	perl.Eval("$foo = 1;")
 	perl.Eval("$bar = 2;")
-	sv := perl.Eval(`sub { $nargs = @_; ($foo, $bar) = @_; }`)
+	perl.Eval("$baz = 3;")
+	sv := perl.Eval(`sub { $nargs = @_; ($foo, $bar, $baz) = @_; }`)
 	cv := sv.CV()
 	if cv == nil {
 		t.Fatalf("cv is nil")
 	}
-	cv.CallVoid(3, "four")
-	if e, g := 2, perl.EvalInt("$nargs"); e != g {
+	cv.CallVoid(4, "five", perl.NewInt(6))
+	if e, g := 3, perl.EvalInt("$nargs"); e != g {
 		t.Errorf("Int($nargs) expected %d; got %d", e, g)
 	}
-	if e, g := 3, perl.EvalInt("$foo"); e != g {
+	if e, g := 4, perl.EvalInt("$foo"); e != g {
 		t.Errorf("Int($foo) expected %d; got %d", e, g)
 	}
-	if e, g := "four", perl.EvalString("$bar"); e != g {
+	if e, g := "five", perl.EvalString("$bar"); e != g {
 		t.Errorf("String($bar) expected %q; got %q", e, g)
+	}
+	if e, g := 6, perl.EvalInt("$baz"); e != g {
+		t.Errorf("Int($baz) expected %d; got %d", e, g)
 	}
 }

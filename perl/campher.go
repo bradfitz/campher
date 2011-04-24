@@ -12,6 +12,7 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"unsafe"
 )
 
@@ -25,19 +26,31 @@ type Interpreter struct {
 	perl *_Ctypedef_PerlInterpreter
 }
 
-func (in *Interpreter) be_context() {
-	C.campher_set_context(in.perl)
+func NewInterpreter() *Interpreter {
+	ip := &Interpreter{
+		perl: C.campher_new_perl(),
+	}
+	runtime.SetFinalizer(ip, func(ip *Interpreter) {
+		C.perl_destruct(ip.perl)
+		C.perl_free(ip.perl)
+	})
+	return ip
 }
 
-func NewInterpreter() *Interpreter {
-	int := new(Interpreter)
-	int.perl = C.campher_new_perl()
-	// TODO: set finalizer and stuff
-	return int
+func (ip *Interpreter) be_context() {
+	C.campher_set_context(ip.perl)
+}
+
+func (ip *Interpreter) NewInt(val int) *SV {
+	sv := &SV{ip, C.campher_new_sv_int(ip.perl, C.int(val))}
+	runtime.SetFinalizer(sv, func(sv *SV) {
+		// TODO: decref
+	})
+	return sv
 }
 
 type SV struct {
-	ip Interpreter
+	ip *Interpreter
 	sv *C.SV
 }
 
@@ -49,11 +62,13 @@ var svPtrSize = unsafe.Sizeof(dummySVPtr)
 func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	switch val := arg.(type) {
 	case int:
-		return C.campher_mortal_sv_int(ip.perl, C.int(val))
+		return C.campher_new_mortal_sv_int(ip.perl, C.int(val))
 	case string:
 		cstr := C.CString(val)
 		defer C.free(unsafe.Pointer(cstr))
 		return C.campher_mortal_sv_string(ip.perl, cstr, C.int(len(val)))
+	case *SV:
+		return val.sv
 	}
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
 }
@@ -92,12 +107,13 @@ func (ip *Interpreter) Eval(str string) SV {
 	ip.be_context()
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
-	return SV{*ip, C.campher_eval_pv(ip.perl, cstr)}
+	// TODO: figure out refcounting here
+	return SV{ip, C.campher_eval_pv(ip.perl, cstr)}
 }
 
 func (ip *Interpreter) EvalInt(str string) int {
 	sv := ip.Eval(str)
-	return int(C.campher_sv_int(ip.perl, sv.sv))
+	return int(C.campher_get_sv_int(ip.perl, sv.sv))
 }
 
 func (ip *Interpreter) EvalString(str string) string {

@@ -33,16 +33,20 @@ static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
   return eval_pv(code, TRUE);
 }
 
-static int campher_sv_int(PerlInterpreter* my_perl, SV* sv) {
-  return SvIVx(sv);
+static SV* campher_new_mortal_sv_int(PerlInterpreter* my_perl, int val) {
+  return sv_2mortal(newSViv(val));
 }
 
-static SV* campher_mortal_sv_int(PerlInterpreter* my_perl, int val) {
-  return sv_2mortal(newSViv(val));
+static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
+  return newSViv(val);
 }
 
 static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
   return sv_2mortal(newSVpvn(c, len));
+}
+
+static int campher_get_sv_int(PerlInterpreter* my_perl, SV* sv) {
+  return SvIVx(sv);
 }
 
 static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {

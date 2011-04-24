@@ -1,3 +1,5 @@
+#include "XSUB.h"
+
 static int dummy_argc = 3;
 static char** dummy_argv;
 static char** dummy_env;
@@ -23,12 +25,20 @@ static void xs_init (pTHX);
 
 EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
 
+XS(XS_Campher_callback);
+XS(XS_Campher_callback) {
+  dXSARGS;
+  ST(0) = sv_2mortal(newSViv(items));
+  XSRETURN(1);
+}
+
 EXTERN_C void
 xs_init(pTHX)
 {
   char *file = __FILE__;
   /* DynaLoader is a special case */
   newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+  newXS("Campher::callback", XS_Campher_callback, file);
 }
 
 static PerlInterpreter* campher_new_perl() {

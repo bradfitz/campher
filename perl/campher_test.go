@@ -126,3 +126,10 @@ func TestDynamicLoading(t *testing.T) {
 	}
 }
 
+func TestCallback(t *testing.T) {
+	perl := NewInterpreter()
+	// TODO: work in progress.
+	if e, g := 3, perl.EvalInt(`Campher::callback(1, 1, 1)`); e != g {
+                t.Errorf("expected %d, got %d", e, g)
+	}
+}

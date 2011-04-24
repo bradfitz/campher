@@ -62,7 +62,7 @@ func TestVoidCall(t *testing.T) {
 	perl.Eval("$foo = 1;")
 	perl.Eval("$bar = 2;")
 	perl.Eval("$baz = 3;")
-	sv := perl.Eval(`sub { $nargs = @_; ($foo, $bar, $baz) = @_; }`)
+	sv := perl.Eval(`sub { $nargs = @_; ($foo, $bar, $baz) = @_; $is_void = !defined(wantarray);}`)
 	cv := sv.CV()
 	if cv == nil {
 		t.Fatalf("cv is nil")
@@ -80,11 +80,15 @@ func TestVoidCall(t *testing.T) {
 	if e, g := 6, perl.EvalInt("$baz"); e != g {
 		t.Errorf("Int($baz) expected %d; got %d", e, g)
 	}
+	if e, g := 1, perl.EvalInt("$is_void"); e != g {
+		t.Errorf("Int($is_void) expected %d; got %d", e, g)
+	}
 }
 
 func TestScalarCall(t *testing.T) {
 	perl := NewInterpreter()
-	sv := perl.Eval(`sub { return 42 }`)
+	perl.Eval("$want_array = -99;")
+	sv := perl.Eval(`sub { $want_array = wantarray; return 42 }`)
 	cv := sv.CV()
 	if cv == nil {
 		t.Fatalf("cv is nil")
@@ -95,6 +99,9 @@ func TestScalarCall(t *testing.T) {
 	}
 	if e, g := "42", retsv.String(); e != g {
 		t.Errorf("String(retsv) got %q, expected %q", g, e)
+	}
+	if e, g := 0, perl.EvalInt("$want_array"); e != g {
+		t.Errorf("Int($want_array) got %d, expected %d", g, e)
 	}
 }
 

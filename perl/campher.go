@@ -138,7 +138,6 @@ func (cv *CV) CallVoid(args ...interface{}) {
 
 // CV returns an SV's code value or nil if the SV is not of that type.
 func (sv SV) CV() *CV {
-	sv.ip.be_context()
 	t := C.campher_get_sv_type(sv.ip.perl, sv.sv)
 	if t&C.SVt_PVCV == 0 {
 		log.Printf("t = %d; wanted = %d", t, C.SVt_PVCV)
@@ -150,7 +149,6 @@ func (sv SV) CV() *CV {
 }
 
 func (ip *Interpreter) Eval(str string) *SV {
-	ip.be_context()
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
 	return ip.newSvDecLater(C.campher_eval_pv(ip.perl, cstr))

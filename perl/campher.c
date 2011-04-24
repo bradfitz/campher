@@ -30,6 +30,7 @@ static PerlInterpreter* campher_new_perl() {
 }
 
 static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
+  PERL_SET_CONTEXT(my_perl);
   SV* ret = eval_pv(code, TRUE);
   // TODO: this might already be done and thus wrong + leaky:
   SvREFCNT_inc(ret);
@@ -37,30 +38,37 @@ static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
 }
 
 static SV* campher_new_mortal_sv_int(PerlInterpreter* my_perl, int val) {
+  PERL_SET_CONTEXT(my_perl);
   return sv_2mortal(newSViv(val));
 }
 
 static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
+  PERL_SET_CONTEXT(my_perl);
   return newSViv(val);
 }
 
 static void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
+  PERL_SET_CONTEXT(my_perl);
   SvREFCNT_dec(sv);
 }
 
 static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
+  PERL_SET_CONTEXT(my_perl);
   return sv_2mortal(newSVpvn(c, len));
 }
 
 static int campher_get_sv_int(PerlInterpreter* my_perl, SV* sv) {
+  PERL_SET_CONTEXT(my_perl);
   return SvIVx(sv);
 }
 
 static int campher_get_sv_bool(PerlInterpreter* my_perl, SV* sv) {
+  PERL_SET_CONTEXT(my_perl);
   return SvTRUE(sv);
 }
 
 static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
+  PERL_SET_CONTEXT(my_perl);
   STRLEN len;
   char* c = SvPVutf8x(sv, len);
   *out_char = c;
@@ -68,16 +76,18 @@ static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_c
 }
 
 static NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
+  PERL_SET_CONTEXT(my_perl);
   return SvNVx(sv);
 }
 
 static svtype campher_get_sv_type(PerlInterpreter* my_perl, SV* sv) {
+  PERL_SET_CONTEXT(my_perl);
   return SvTYPE(sv);
 }
 
 // arg is NULL-terminated and caller must free.
 static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
-  PERL_SET_CONTEXT(my_perl); // TODO: is this needed?
+  PERL_SET_CONTEXT(my_perl);
 
   dSP;
 
@@ -104,7 +114,7 @@ static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
 
 // arg is NULL-terminated and caller must free.
 static void campher_call_sv_scalar(PerlInterpreter* my_perl, SV* sv, SV** arg, SV** ret) {
-  PERL_SET_CONTEXT(my_perl); // TODO: is this needed?
+  PERL_SET_CONTEXT(my_perl);
 
   dSP;
 

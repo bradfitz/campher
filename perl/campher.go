@@ -77,21 +77,39 @@ func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
 }
 
-func (cv CV) CallVoid(goargs ...interface{}) {
-	var args **C.SV
-	if len(goargs) > 0 {
-		var mallocSize int = svPtrSize * (len(goargs) + 1)
-		var memory unsafe.Pointer = C.malloc(C.size_t(mallocSize))
-		defer C.free(memory)
-		args = (**C.SV)(memory)
-		for idx, goarg := range goargs {
-			var thisArg **C.SV = (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(idx*svPtrSize)))
-			*thisArg = cv.ip.rawSvForFuncCall(goarg)
-		}
-		nullArg := (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(len(goargs)*svPtrSize)))
-		*nullArg = (*C.SV)(unsafe.Pointer(uintptr(0)))
+func (cv *CV) buildCallArgs(goargs ...interface{}) (**C.SV, bool) {
+	if len(goargs) == 0 {
+		return (**C.SV)(unsafe.Pointer(uintptr(0))), false
 	}
-	C.campher_call_sv_void(cv.ip.perl, cv.sv, args)
+	var args **C.SV
+	var mallocSize int = svPtrSize * (len(goargs) + 1)
+	var memory unsafe.Pointer = C.malloc(C.size_t(mallocSize))
+	args = (**C.SV)(memory)
+	for idx, goarg := range goargs {
+		var thisArg **C.SV = (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(idx*svPtrSize)))
+		*thisArg = cv.ip.rawSvForFuncCall(goarg)
+	}
+	nullArg := (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(len(goargs)*svPtrSize)))
+	*nullArg = (*C.SV)(unsafe.Pointer(uintptr(0)))
+	return args, true
+}
+
+// Call calls cv with any provided args in scalar context.
+func (cv *CV) Call(args ...interface{}) interface{} {
+	perlargs, needFree := cv.buildCallArgs(args...)
+	if needFree {
+		defer C.free(unsafe.Pointer(perlargs))
+	}
+	return "blah"
+}
+
+// Call calls cv  any provided args in void context.
+func (cv *CV) CallVoid(args ...interface{}) {
+	perlargs, needFree := cv.buildCallArgs(args...)
+	if needFree {
+		defer C.free(unsafe.Pointer(perlargs))
+	}
+	C.campher_call_sv_void(cv.ip.perl, cv.sv, perlargs)
 }
 
 // CV returns an SV's code value or nil if the SV is not of that type.

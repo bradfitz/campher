@@ -81,3 +81,21 @@ func TestVoidCall(t *testing.T) {
 		t.Errorf("Int($baz) expected %d; got %d", e, g)
 	}
 }
+
+func TestScalarCall(t *testing.T) {
+	perl := NewInterpreter()
+	sv := perl.Eval(`sub { return 42 }`)
+	cv := sv.CV()
+	if cv == nil {
+		t.Fatalf("cv is nil")
+	}
+	got := cv.Call()
+	i, ok := got.(int)
+	if !ok {
+		t.Fatalf("didn't get an int; got %T: %#v", got, got)
+	}
+	if e := 42; i != e {
+		t.Errorf("got %d, expected %d", i, e)
+	}
+}
+

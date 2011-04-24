@@ -26,6 +26,14 @@ type Interpreter struct {
 	perl *_Ctypedef_PerlInterpreter
 }
 
+type SV struct {
+	ip *Interpreter
+	sv *C.SV
+}
+
+// A code value CV that's callable.
+type CV SV
+
 func NewInterpreter() *Interpreter {
 	ip := &Interpreter{
 		perl: C.campher_new_perl(),
@@ -41,15 +49,16 @@ func (ip *Interpreter) be_context() {
 	C.campher_set_context(ip.perl)
 }
 
-func (ip *Interpreter) NewInt(val int) *SV {
-	sv := &SV{ip, C.campher_new_sv_int(ip.perl, C.int(val))}
+// newSvDecLater returns a new SV from a C.SV that has a reference
+// count we need to decrement later.
+func (ip *Interpreter) newSvDecLater(csv *C.SV) *SV {
+	sv := &SV{ip, csv}
 	sv.setFinalizer()
 	return sv
 }
 
-type SV struct {
-	ip *Interpreter
-	sv *C.SV
+func (ip *Interpreter) NewInt(val int) *SV {
+	return ip.newSvDecLater(C.campher_new_sv_int(ip.perl, C.int(val)))
 }
 
 func (sv *SV) setFinalizer() {
@@ -58,7 +67,16 @@ func (sv *SV) setFinalizer() {
 	})
 }
 
-type CV SV
+func (sv *SV) String() string {
+	var cstr *C.char
+	var length C.int
+	C.campher_get_sv_string(sv.ip.perl, sv.sv, &cstr, &length)
+	return C.GoStringN(cstr, length)
+}
+
+func (sv *SV) Int() int {
+	return int(C.campher_get_sv_int(sv.ip.perl, sv.sv))
+}
 
 var dummySVPtr *C.SV
 var svPtrSize = unsafe.Sizeof(dummySVPtr)
@@ -95,12 +113,14 @@ func (cv *CV) buildCallArgs(goargs ...interface{}) (**C.SV, bool) {
 }
 
 // Call calls cv with any provided args in scalar context.
-func (cv *CV) Call(args ...interface{}) interface{} {
+func (cv *CV) Call(args ...interface{}) *SV {
 	perlargs, needFree := cv.buildCallArgs(args...)
 	if needFree {
 		defer C.free(unsafe.Pointer(perlargs))
 	}
-	return "blah"
+	var ret *C.SV
+	C.campher_call_sv_scalar(cv.ip.perl, cv.sv, perlargs, &ret)
+	return cv.ip.newSvDecLater(ret)
 }
 
 // Call calls cv  any provided args in void context.
@@ -125,25 +145,19 @@ func (sv SV) CV() *CV {
 	return &cv
 }
 
-func (ip *Interpreter) Eval(str string) SV {
+func (ip *Interpreter) Eval(str string) *SV {
 	ip.be_context()
 	cstr := C.CString(str)
 	defer C.free(unsafe.Pointer(cstr))
-	// TODO: figure out refcounting here
-	return SV{ip, C.campher_eval_pv(ip.perl, cstr)}
+	return ip.newSvDecLater(C.campher_eval_pv(ip.perl, cstr))
 }
 
 func (ip *Interpreter) EvalInt(str string) int {
-	sv := ip.Eval(str)
-	return int(C.campher_get_sv_int(ip.perl, sv.sv))
+	return ip.Eval(str).Int()
 }
 
 func (ip *Interpreter) EvalString(str string) string {
-	sv := ip.Eval(str)
-	var cstr *C.char
-	var length C.int
-	C.campher_get_sv_string(ip.perl, sv.sv, &cstr, &length)
-	return C.GoStringN(cstr, length)
+	return ip.Eval(str).String()
 }
 
 func (ip *Interpreter) EvalFloat(str string) float64 {

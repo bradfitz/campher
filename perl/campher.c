@@ -30,7 +30,10 @@ static PerlInterpreter* campher_new_perl() {
 }
 
 static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
-  return eval_pv(code, TRUE);
+  SV* ret = eval_pv(code, TRUE);
+  // TODO: this might already be done and thus wrong + leaky:
+  SvREFCNT_inc(ret);
+  return ret;
 }
 
 static SV* campher_new_mortal_sv_int(PerlInterpreter* my_perl, int val) {
@@ -91,6 +94,41 @@ static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
     assert(false);
   }
 
+  FREETMPS;
+  LEAVE;
+}
+
+// arg is NULL-terminated and caller must free.
+static void campher_call_sv_scalar(PerlInterpreter* my_perl, SV* sv, SV** arg, SV** ret) {
+  PERL_SET_CONTEXT(my_perl); // TODO: is this needed?
+
+  dSP;
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+  if (arg != NULL) {
+    while (*arg != NULL) {
+      XPUSHs(*arg);
+      arg++;
+    }
+  }
+  PUTBACK;
+
+  I32 count = call_sv(sv, G_SCALAR);
+  // TODO: deal with error flag. will just crash process for now.
+
+  SPAGAIN;
+
+  if (count != 1) {
+    croak("expected 1 in campher_call_sv_scalar");
+  }
+  SV* result = POPs;
+  SvREFCNT_inc(result);
+  *ret = result;
+
+  PUTBACK;
   FREETMPS;
   LEAVE;
 }

@@ -89,13 +89,12 @@ func TestScalarCall(t *testing.T) {
 	if cv == nil {
 		t.Fatalf("cv is nil")
 	}
-	got := cv.Call()
-	i, ok := got.(int)
-	if !ok {
-		t.Fatalf("didn't get an int; got %T: %#v", got, got)
+	retsv := cv.Call()
+	if e, g := 42, retsv.Int(); e != g {
+		t.Errorf("Int(retsv) got %d, expected %d", g, e)
 	}
-	if e := 42; i != e {
-		t.Errorf("got %d, expected %d", i, e)
+	if e, g := "42", retsv.String(); e != g {
+		t.Errorf("String(retsv) got %q, expected %q", g, e)
 	}
 }
 

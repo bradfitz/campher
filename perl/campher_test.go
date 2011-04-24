@@ -2,6 +2,7 @@ package perl
 
 import (
 	"log"
+	"runtime"
 	"testing"
 )
 
@@ -29,6 +30,16 @@ func TestPerl(t *testing.T) {
 	if e, g := 0.5, perl.EvalFloat("$foo"); e != g {
 		t.Errorf("Int(0.5) expected %f; got %f", e, g)
 	}
+}
+
+func TestFinalizer(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		perl := NewInterpreter()
+		for n := 0; n < 500; n++ {
+			perl.NewInt(n)
+		}
+	}
+	runtime.GC()
 }
 
 func TestVoidNiladicCall(t *testing.T) {

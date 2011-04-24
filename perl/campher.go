@@ -43,15 +43,19 @@ func (ip *Interpreter) be_context() {
 
 func (ip *Interpreter) NewInt(val int) *SV {
 	sv := &SV{ip, C.campher_new_sv_int(ip.perl, C.int(val))}
-	runtime.SetFinalizer(sv, func(sv *SV) {
-		// TODO: decref
-	})
+	sv.setFinalizer()
 	return sv
 }
 
 type SV struct {
 	ip *Interpreter
 	sv *C.SV
+}
+
+func (sv *SV) setFinalizer() {
+	runtime.SetFinalizer(sv, func(sv *SV) {
+		C.campher_sv_decref(sv.ip.perl, sv.sv)
+	})
 }
 
 type CV SV

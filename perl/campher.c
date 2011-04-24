@@ -41,6 +41,10 @@ static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
   return newSViv(val);
 }
 
+static void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
+  SvREFCNT_dec(sv);
+}
+
 static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
   return sv_2mortal(newSVpvn(c, len));
 }

@@ -56,6 +56,10 @@ static int campher_get_sv_int(PerlInterpreter* my_perl, SV* sv) {
   return SvIVx(sv);
 }
 
+static int campher_get_sv_bool(PerlInterpreter* my_perl, SV* sv) {
+  return SvTRUE(sv);
+}
+
 static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
   STRLEN len;
   char* c = SvPVutf8x(sv, len);

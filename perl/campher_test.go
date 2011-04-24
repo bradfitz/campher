@@ -30,6 +30,18 @@ func TestPerl(t *testing.T) {
 	if e, g := 0.5, perl.EvalFloat("$foo"); e != g {
 		t.Errorf("Int(0.5) expected %f; got %f", e, g)
 	}
+
+	sv := perl.Eval("1")
+	if e, g := 1, sv.Int(); e != g {
+		t.Errorf("Int(sv) expected %v; got %v", e, g)
+	}
+	if e, g := "1", sv.String(); e != g {
+		t.Errorf("String(sv) expected %v; got %v", e, g)
+	}
+	if e, g := true, sv.Bool(); e != g {
+		t.Errorf("Bool(sv) expected %v; got %v", e, g)
+	}
+
 }
 
 func TestFinalizer(t *testing.T) {

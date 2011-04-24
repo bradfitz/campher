@@ -78,6 +78,10 @@ func (sv *SV) Int() int {
 	return int(C.campher_get_sv_int(sv.ip.perl, sv.sv))
 }
 
+func (sv *SV) Bool() bool {
+	return C.campher_get_sv_bool(sv.ip.perl, sv.sv) != 0
+}
+
 var dummySVPtr *C.SV
 var svPtrSize = unsafe.Sizeof(dummySVPtr)
 

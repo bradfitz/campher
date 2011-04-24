@@ -128,8 +128,21 @@ func TestDynamicLoading(t *testing.T) {
 
 func TestCallback(t *testing.T) {
 	perl := NewInterpreter()
-	// TODO: work in progress.
-	if e, g := 3, perl.EvalInt(`Campher::callback(1, 1, 1)`); e != g {
-                t.Errorf("expected %d, got %d", e, g)
+	run := false
+	callback := perl.NewCV(func (args ...interface{}) {
+		t.Logf("got callback: %#v", args)
+		run = true
+	})
+	sv := perl.Eval(`sub { my ($cb, $ret) = @_; $cb->(5, "six", 7, $ret); $ret; }`)
+	cv := sv.CV()
+	if cv == nil {
+		t.Fatalf("cv is nil")
+	}
+	retsv := cv.Call(callback, 8)
+	if e, g := 8, retsv.Int(); e != g {
+		t.Errorf("Int(retsv) got %d, expected %d", g, e)
+	}
+	if !run {
+		t.Errorf("run == false, expected true")
 	}
 }

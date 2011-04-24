@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"sync"
 	"unsafe"
 )
 
@@ -61,6 +62,34 @@ func (ip *Interpreter) NewInt(val int) *SV {
 	return ip.newSvDecLater(C.campher_new_sv_int(ip.perl, C.int(val)))
 }
 
+var callbackLock sync.Mutex
+var callbackMap = make(map[uintptr]*CV)
+
+func (ip *Interpreter) NewCV(fn func (args ...interface{})) *CV {
+	addr := uintptr(unsafe.Pointer(&fn))
+	sv := ip.Eval(fmt.Sprintf("sub { Campher::callback(%d, @_); }", addr))
+	log.Printf("new cv at addr %d", addr)
+	callbackLock.Lock()
+	defer callbackLock.Unlock()
+	cv := (*CV)(sv)
+	callbackMap[addr] = cv
+	return cv
+}
+
+//export callCampherGoFunc
+func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svargs unsafe.Pointer) {
+	callbackLock.Lock()
+	cv := callbackMap[uintptr(fnAddr)]
+	callbackLock.Unlock()
+
+	log.Printf("call of %d with %d args; cv = %v", uintptr(fnAddr), narg, cv)
+	fnPtr := (*func (args ...interface{}))(fnAddr)
+	fn := *fnPtr
+	fn()
+	log.Printf("called")
+
+}
+
 func (sv *SV) setFinalizer() {
 	runtime.SetFinalizer(sv, func(sv *SV) {
 		C.campher_sv_decref(sv.ip.perl, sv.sv)
@@ -94,6 +123,8 @@ func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 		defer C.free(unsafe.Pointer(cstr))
 		return C.campher_mortal_sv_string(ip.perl, cstr, C.int(len(val)))
 	case *SV:
+		return val.sv
+	case *CV:
 		return val.sv
 	}
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
@@ -137,15 +168,15 @@ func (cv *CV) CallVoid(args ...interface{}) {
 }
 
 // CV returns an SV's code value or nil if the SV is not of that type.
-func (sv SV) CV() *CV {
+func (sv *SV) CV() *CV {
 	t := C.campher_get_sv_type(sv.ip.perl, sv.sv)
 	if t&C.SVt_PVCV == 0 {
 		log.Printf("t = %d; wanted = %d", t, C.SVt_PVCV)
 		return nil
 	}
 	// inc the ref?
-	cv := CV(sv)
-	return &cv
+	cv := (*CV)(sv)
+	return cv
 }
 
 func (ip *Interpreter) Eval(str string) *SV {

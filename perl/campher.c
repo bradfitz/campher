@@ -25,9 +25,15 @@ static void xs_init (pTHX);
 
 EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
 
+extern void callCampherGoFunc(void* fnAddr, int narg, SV** args);
+
 XS(XS_Campher_callback);
 XS(XS_Campher_callback) {
   dXSARGS;
+  if (items < 2) {
+    croak("expected at least 2 arguments");
+  }      
+  callCampherGoFunc((void*)(SvIVx(ST(0))), items - 1, NULL);
   ST(0) = sv_2mortal(newSViv(items));
   XSRETURN(1);
 }

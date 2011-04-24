@@ -10,6 +10,7 @@ package perl
 import "C"
 
 import (
+	"fmt"
 	"log"
 	"unsafe"
 )
@@ -42,12 +43,33 @@ type SV struct {
 
 type CV SV
 
-func (cv CV) CallVoid(args ...interface{}) {
-	if len(args) > 0 {
-		// TODO: pass args
-		panic("args not yet supported")
+var dummySVPtr *C.SV
+var svPtrSize = unsafe.Sizeof(dummySVPtr)
+
+func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
+	switch val := arg.(type) {
+	case int:
+		return C.campher_mortal_sv_int(ip.perl, C.int(val))
+	case string:
 	}
-	C.campher_call_sv_void(cv.ip.perl, cv.sv)
+	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
+}
+
+func (cv CV) CallVoid(goargs ...interface{}) {
+	var args **C.SV
+	if len(goargs) > 0 {
+		var mallocSize int = svPtrSize * (len(goargs) + 1)
+		var memory unsafe.Pointer = C.malloc(C.size_t(mallocSize))
+		defer C.free(memory)
+		args = (**C.SV)(memory)
+		for idx, goarg := range goargs {
+			var thisArg **C.SV = (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(idx * svPtrSize)))
+			*thisArg = cv.ip.rawSvForFuncCall(goarg)
+		}
+		nullArg := (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(len(goargs) * svPtrSize)))
+		*nullArg = (*C.SV)(unsafe.Pointer(uintptr(0)))
+	}
+	C.campher_call_sv_void(cv.ip.perl, cv.sv, args)
 }
 
 // CV returns an SV's code value or nil if the SV is not of that type.

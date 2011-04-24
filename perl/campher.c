@@ -37,6 +37,10 @@ static int campher_sv_int(PerlInterpreter* my_perl, SV* sv) {
   return SvIVx(sv);
 }
 
+static SV* campher_mortal_sv_int(PerlInterpreter* my_perl, int val) {
+  return sv_2mortal(newSViv(val));
+}
+
 static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
   STRLEN len;
   char* c = SvPVutf8x(sv, len);
@@ -52,11 +56,29 @@ static svtype campher_get_sv_type(PerlInterpreter* my_perl, SV* sv) {
   return SvTYPE(sv);
 }
 
-static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv) {
-  I32 flags = 0;
-  I32 ret;
-
+// arg is NULL-terminated and caller must free.
+static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
   PERL_SET_CONTEXT(my_perl); // TODO: is this needed?
-  flags |= G_VOID | G_NOARGS;
-  ret = call_sv(sv, flags);
+
+  dSP;
+
+  ENTER;
+  SAVETMPS;
+
+  PUSHMARK(SP);
+  if (arg != NULL) {
+    while (*arg != NULL) {
+      XPUSHs(*arg);
+      arg++;
+    }
+  }
+  PUTBACK;
+
+  I32 ret = call_sv(sv, G_VOID);
+  if (ret != 0) {
+    assert(false);
+  }
+
+  FREETMPS;
+  LEAVE;
 }

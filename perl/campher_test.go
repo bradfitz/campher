@@ -55,15 +55,14 @@ func TestVoidCall(t *testing.T) {
 	if cv == nil {
 		t.Fatalf("cv is nil")
 	}
-	cv.CallVoid(3, 4)
+	cv.CallVoid(3, "four")
 	if e, g := 2, perl.EvalInt("$nargs"); e != g {
 		t.Errorf("Int($nargs) expected %d; got %d", e, g)
 	}
 	if e, g := 3, perl.EvalInt("$foo"); e != g {
 		t.Errorf("Int($foo) expected %d; got %d", e, g)
 	}
-	if e, g := 4, perl.EvalInt("$bar"); e != g {
-		t.Errorf("Int($bar) expected %d; got %d", e, g)
+	if e, g := "four", perl.EvalString("$bar"); e != g {
+		t.Errorf("String($bar) expected %q; got %q", e, g)
 	}
-
 }

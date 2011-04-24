@@ -41,6 +41,10 @@ static SV* campher_mortal_sv_int(PerlInterpreter* my_perl, int val) {
   return sv_2mortal(newSViv(val));
 }
 
+static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
+  return sv_2mortal(newSVpvn(c, len));
+}
+
 static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
   STRLEN len;
   char* c = SvPVutf8x(sv, len);

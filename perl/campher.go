@@ -51,6 +51,9 @@ func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	case int:
 		return C.campher_mortal_sv_int(ip.perl, C.int(val))
 	case string:
+		cstr := C.CString(val)
+		defer C.free(unsafe.Pointer(cstr))
+		return C.campher_mortal_sv_string(ip.perl, cstr, C.int(len(val)))
 	}
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
 }
@@ -63,10 +66,10 @@ func (cv CV) CallVoid(goargs ...interface{}) {
 		defer C.free(memory)
 		args = (**C.SV)(memory)
 		for idx, goarg := range goargs {
-			var thisArg **C.SV = (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(idx * svPtrSize)))
+			var thisArg **C.SV = (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(idx*svPtrSize)))
 			*thisArg = cv.ip.rawSvForFuncCall(goarg)
 		}
-		nullArg := (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(len(goargs) * svPtrSize)))
+		nullArg := (**C.SV)(unsafe.Pointer(uintptr(memory) + uintptr(len(goargs)*svPtrSize)))
 		*nullArg = (*C.SV)(unsafe.Pointer(uintptr(0)))
 	}
 	C.campher_call_sv_void(cv.ip.perl, cv.sv, args)

@@ -127,33 +127,34 @@ func TestDynamicLoading(t *testing.T) {
 	}
 }
 
-func TestCallback(t *testing.T) {
+func TestGoCallback(t *testing.T) {
 	perl := NewInterpreter()
 	run := false
 	var gotArgs []string
-	callback := perl.NewCV(func (args ...*SV) {
+	callback := perl.NewCV(func(args ...*SV) interface{} {
 		run = true
 		gotArgs = make([]string, len(args))
 		for idx, sv := range args {
 			gotArgs[idx] = sv.String()
 		}
 		run = true
+		return "part1-"
 	})
-	sv := perl.Eval(`sub { my ($cb, $ret) = @_; $cb->(5, "six", 7, $ret); $ret; }`)
+	sv := perl.Eval(`sub { my ($cb, $ret) = @_; $cb->(5, "six", 7, $ret) . "part2"; }`)
 	cv := sv.CV()
 	if cv == nil {
 		t.Fatalf("cv is nil")
 	}
 	retsv := cv.Call(callback, 8)
-	if e, g := 8, retsv.Int(); e != g {
-		t.Errorf("Int(retsv) got %d, expected %d", g, e)
+	if e, g := "part1-part2", retsv.String(); e != g {
+		t.Errorf("String(retsv) got %q, expected %q", g, e)
 	}
 	if !run {
 		t.Errorf("run == false, expected true")
 	}
 	wantArgs := []string{"5", "six", "7", "8"}
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
-		t.Errorf(" got args: %#v\n" +
-			"want args: %#v\n", gotArgs, wantArgs)
+		t.Errorf(" got args: %#v\n"+
+			"want args: %#v\n",gotArgs, wantArgs)
 	}
 }

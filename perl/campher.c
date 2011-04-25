@@ -25,7 +25,7 @@ static void xs_init (pTHX);
 
 EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
 
-extern void callCampherGoFunc(void* fnAddr, int narg, SV** args);
+extern void callCampherGoFunc(void* fnAddr, int narg, SV** args, SV** out_ret);
 
 XS(XS_Campher_callback);
 XS(XS_Campher_callback) {
@@ -40,9 +40,14 @@ XS(XS_Campher_callback) {
     perl_args[i] = ST(i+1);
     SvREFCNT_inc(perl_args[i]);
   }
-  callCampherGoFunc((void*)(SvIVx(ST(0))), n_perl_args, perl_args);
+  SV* scalar_return = 0;
+  callCampherGoFunc((void*)(SvIVx(ST(0))), n_perl_args, perl_args, &scalar_return);
   free(perl_args);
-  ST(0) = sv_2mortal(newSViv(items));
+  if (!scalar_return) {
+    ST(0) = &PL_sv_undef;
+  } else {
+    ST(0) = sv_2mortal(scalar_return);
+  }
   XSRETURN(1);
 }
 
@@ -86,6 +91,11 @@ static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
 static void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   SvREFCNT_dec(sv);
+}
+
+static SV* campher_new_sv_string(PerlInterpreter* my_perl, char* c, int len) {
+  PERL_SET_CONTEXT(my_perl);
+  return newSVpvn(c, len);
 }
 
 static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {

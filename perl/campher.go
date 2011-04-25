@@ -12,12 +12,14 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"runtime"
 	"sync"
 	"unsafe"
 )
 
 var _ = log.Printf
+var _ = reflect.Typeof
 
 func init() {
 	C.campher_init()
@@ -62,10 +64,16 @@ func (ip *Interpreter) NewInt(val int) *SV {
 	return ip.newSvDecLater(C.campher_new_sv_int(ip.perl, C.int(val)))
 }
 
+func (ip *Interpreter) NewString(val string) *SV {
+	cstr := C.CString(val)
+	defer C.free(unsafe.Pointer(cstr))
+	return ip.newSvDecLater(C.campher_new_sv_string(ip.perl, cstr, C.int(len(val))))
+}
+
 var callbackLock sync.Mutex
 var callbackMap = make(map[uintptr]*CV)
 
-func (ip *Interpreter) NewCV(fn func (args ...*SV)) *CV {
+func (ip *Interpreter) NewCV(fn func(args ...*SV) interface{}) *CV {
 	addr := uintptr(unsafe.Pointer(&fn))
 	sv := ip.Eval(fmt.Sprintf("sub { Campher::callback(%d, @_); }", addr))
 	callbackLock.Lock()
@@ -76,8 +84,9 @@ func (ip *Interpreter) NewCV(fn func (args ...*SV)) *CV {
 }
 
 //export callCampherGoFunc
-func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svArgsPtr unsafe.Pointer) {
-	// svArgsPtr is **C.SV
+func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svArgsPtr unsafe.Pointer, svOutResult unsafe.Pointer) {
+	// svArgsPtr is **C.SV (input array)
+	// svOutResult is **C.SV (optional output for scalar result. value of 0 gets mapped to undef)
 	callbackLock.Lock()
 	cv := callbackMap[uintptr(fnAddr)]
 	callbackLock.Unlock()
@@ -89,16 +98,28 @@ func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svArgsPtr unsafe.Point
 
 	cbargs := make([]*SV, narg)
 	for i := 0; i < int(narg); i++ {
-		csv := *((**C.SV)(unsafe.Pointer(uintptr(svArgsPtr) + uintptr(i * svPtrSize))))
+		csv := *((**C.SV)(unsafe.Pointer(uintptr(svArgsPtr) + uintptr(i*svPtrSize))))
 		cbargs[i] = cv.ip.newSvDecLater(csv)
 	}
-	fnPtr := (*func (args ...*SV))(fnAddr)
+	fnPtr := (*func(args ...*SV) interface{})(fnAddr)
 	fn := *fnPtr
-	fn(cbargs...)
+	ei := fn(cbargs...)
+	var svOut **C.SV = (**C.SV)(svOutResult)
+	switch val := ei.(type) {
+	case int:
+		*svOut = cv.ip.NewInt(val).sv
+	case string:
+		*svOut = cv.ip.NewString(val).sv
+	case *SV:
+		*svOut = val.sv
+	default:
+		panic(fmt.Sprintf("can't yet deal with func return values of type %T: %#v", val, val))
+	}
 }
 
 func (sv *SV) setFinalizer() {
 	runtime.SetFinalizer(sv, func(sv *SV) {
+		// TODO: does this get lost when things are converted to CV*?
 		C.campher_sv_decref(sv.ip.perl, sv.sv)
 	})
 }
@@ -134,6 +155,7 @@ func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	case *CV:
 		return val.sv
 	}
+
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
 }
 

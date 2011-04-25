@@ -26,7 +26,8 @@ func init() {
 }
 
 type Interpreter struct {
-	perl *_Ctypedef_PerlInterpreter
+	perl  *_Ctypedef_PerlInterpreter
+	undef *SV // lazily initialized
 }
 
 type SV struct {
@@ -70,6 +71,13 @@ func (ip *Interpreter) NewString(val string) *SV {
 	return ip.newSvDecLater(C.campher_new_sv_string(ip.perl, cstr, C.int(len(val))))
 }
 
+func (ip *Interpreter) Undef() *SV {
+	if ip.undef == nil {
+		ip.undef = &SV{ip, C.campher_undef_sv(ip.perl)}
+	}
+	return ip.undef
+}
+
 var callbackLock sync.Mutex
 var callbackMap = make(map[uintptr]*CV)
 
@@ -110,6 +118,12 @@ func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svArgsPtr unsafe.Point
 		*svOut = cv.ip.NewInt(val).sv
 	case string:
 		*svOut = cv.ip.NewString(val).sv
+	case bool:
+		if val {
+			*svOut = cv.ip.NewInt(1).sv
+		} else {
+			*svOut = cv.ip.NewInt(0).sv
+		}
 	case *SV:
 		*svOut = val.sv
 	default:
@@ -142,7 +156,7 @@ func (sv *SV) Bool() bool {
 var dummySVPtr *C.SV
 var svPtrSize = unsafe.Sizeof(dummySVPtr)
 
-func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
+func (ip *Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	switch val := arg.(type) {
 	case int:
 		return C.campher_new_mortal_sv_int(ip.perl, C.int(val))
@@ -155,7 +169,45 @@ func (ip Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	case *CV:
 		return val.sv
 	}
-
+	ftype := reflect.Typeof(arg)
+	if ftype.Kind() == reflect.Func {
+		cv := ip.NewCV(func(args ...*SV) interface{} {
+			callArg := make([]reflect.Value, ftype.NumIn())
+			// extend incoming args, if necessary, to be long enough for the ftype
+			// number of arguments
+			for len(args) < ftype.NumIn() {
+				args = append(args, ip.Undef())
+			}
+			for i := 0; i < ftype.NumIn(); i++ {
+				kind := ftype.In(i).Kind()
+				switch kind {
+				case reflect.Bool:
+					callArg[i] = reflect.NewValue(args[i].Bool())
+				case reflect.Int:
+					callArg[i] = reflect.NewValue(args[i].Int())
+				case reflect.String:
+					callArg[i] = reflect.NewValue(args[i].String())
+				default:
+					panic(fmt.Sprintf("unsupported func callback arg type of kind: %d", kind))
+				}
+			}
+			if ftype.NumOut() != 1 {
+				panic(fmt.Sprintf("unsupported func callback returning %d arguments (only 1 supported now)", ftype.NumOut()))
+			}
+			fval := reflect.NewValue(arg)
+			results := fval.Call(callArg)
+			switch ftype.Out(0).Kind() {
+			case reflect.Bool:
+				return results[0].Bool()
+			case reflect.Int:
+				return int(results[0].Int())
+			case reflect.String:
+				return results[0].String()
+			}
+			panic(fmt.Sprintf("unsupported func callback result kind of %d", ftype.Out(0).Kind()))
+		})
+		return cv.sv
+	}
 	panic(fmt.Sprintf("TODO: can't use type %T in call", arg))
 }
 

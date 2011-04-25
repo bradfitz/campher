@@ -158,3 +158,29 @@ func TestGoCallback(t *testing.T) {
 			"want args: %#v\n",gotArgs, wantArgs)
 	}
 }
+
+func TestGoCustomCallbacks(t *testing.T) {
+	perl := NewInterpreter()
+	cv := perl.Eval(`sub { my ($a1, $a2, $func) = @_; $func->($a1, $a2); }`).CV()
+	var ret *SV
+
+	ret = cv.Call(1, 2, func(a, b int) int { return a + b })
+	if e, g := 3, ret.Int(); e != g {
+		t.Errorf("test 1 expected %v, got %v", e, g)
+	}
+
+	ret = cv.Call(1, 2, func(a, b string) string { return a + b })
+	if e, g := "12", ret.String(); e != g {
+		t.Errorf("test 2 expected %v, got %v", e, g)
+	}
+
+	ret = cv.Call(1, "two", func(a, b string) string { return a + strings.ToUpper(b) })
+	if e, g := "1TWO", ret.String(); e != g {
+		t.Errorf("test 3 expected %v, got %v", e, g)
+	}
+
+	ret = cv.Call(7, 8, func(a, b int) bool { return a < b })
+	if e, g := "1", ret.String(); e != g {
+		t.Errorf("test 4 expected %v, got %v", e, g)
+	}
+}

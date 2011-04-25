@@ -88,6 +88,11 @@ static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
   return newSViv(val);
 }
 
+static SV* campher_undef_sv(PerlInterpreter* my_perl) {
+  PERL_SET_CONTEXT(my_perl);
+  return &PL_sv_undef;
+}
+
 static void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   SvREFCNT_dec(sv);

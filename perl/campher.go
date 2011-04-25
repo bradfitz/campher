@@ -65,10 +65,9 @@ func (ip *Interpreter) NewInt(val int) *SV {
 var callbackLock sync.Mutex
 var callbackMap = make(map[uintptr]*CV)
 
-func (ip *Interpreter) NewCV(fn func (args ...interface{})) *CV {
+func (ip *Interpreter) NewCV(fn func (args ...*SV)) *CV {
 	addr := uintptr(unsafe.Pointer(&fn))
 	sv := ip.Eval(fmt.Sprintf("sub { Campher::callback(%d, @_); }", addr))
-	log.Printf("new cv at addr %d", addr)
 	callbackLock.Lock()
 	defer callbackLock.Unlock()
 	cv := (*CV)(sv)
@@ -77,17 +76,25 @@ func (ip *Interpreter) NewCV(fn func (args ...interface{})) *CV {
 }
 
 //export callCampherGoFunc
-func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svargs unsafe.Pointer) {
+func callCampherGoFunc(fnAddr unsafe.Pointer, narg C.int, svArgsPtr unsafe.Pointer) {
+	// svArgsPtr is **C.SV
 	callbackLock.Lock()
 	cv := callbackMap[uintptr(fnAddr)]
 	callbackLock.Unlock()
 
-	log.Printf("call of %d with %d args; cv = %v", uintptr(fnAddr), narg, cv)
-	fnPtr := (*func (args ...interface{}))(fnAddr)
-	fn := *fnPtr
-	fn()
-	log.Printf("called")
+	if cv == nil {
+		log.Printf("callback but cv not in map")
+		return
+	}
 
+	cbargs := make([]*SV, narg)
+	for i := 0; i < int(narg); i++ {
+		csv := *((**C.SV)(unsafe.Pointer(uintptr(svArgsPtr) + uintptr(i * svPtrSize))))
+		cbargs[i] = cv.ip.newSvDecLater(csv)
+	}
+	fnPtr := (*func (args ...*SV))(fnAddr)
+	fn := *fnPtr
+	fn(cbargs...)
 }
 
 func (sv *SV) setFinalizer() {

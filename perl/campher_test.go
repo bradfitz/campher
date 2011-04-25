@@ -2,6 +2,7 @@ package perl
 
 import (
 	"log"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -129,8 +130,13 @@ func TestDynamicLoading(t *testing.T) {
 func TestCallback(t *testing.T) {
 	perl := NewInterpreter()
 	run := false
-	callback := perl.NewCV(func (args ...interface{}) {
-		t.Logf("got callback: %#v", args)
+	var gotArgs []string
+	callback := perl.NewCV(func (args ...*SV) {
+		run = true
+		gotArgs = make([]string, len(args))
+		for idx, sv := range args {
+			gotArgs[idx] = sv.String()
+		}
 		run = true
 	})
 	sv := perl.Eval(`sub { my ($cb, $ret) = @_; $cb->(5, "six", 7, $ret); $ret; }`)
@@ -144,5 +150,10 @@ func TestCallback(t *testing.T) {
 	}
 	if !run {
 		t.Errorf("run == false, expected true")
+	}
+	wantArgs := []string{"5", "six", "7", "8"}
+	if !reflect.DeepEqual(gotArgs, wantArgs) {
+		t.Errorf(" got args: %#v\n" +
+			"want args: %#v\n", gotArgs, wantArgs)
 	}
 }

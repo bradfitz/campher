@@ -33,7 +33,15 @@ XS(XS_Campher_callback) {
   if (items < 2) {
     croak("expected at least 2 arguments");
   }      
-  callCampherGoFunc((void*)(SvIVx(ST(0))), items - 1, NULL);
+  int n_perl_args = items - 1;
+  SV** perl_args = malloc(sizeof(SV*) * n_perl_args);
+  int i;
+  for (i = 0; i < n_perl_args; i++) {
+    perl_args[i] = ST(i+1);
+    SvREFCNT_inc(perl_args[i]);
+  }
+  callCampherGoFunc((void*)(SvIVx(ST(0))), n_perl_args, perl_args);
+  free(perl_args);
   ST(0) = sv_2mortal(newSViv(items));
   XSRETURN(1);
 }
@@ -159,7 +167,7 @@ static void campher_call_sv_scalar(PerlInterpreter* my_perl, SV* sv, SV** arg, S
   PUTBACK;
 
   I32 count = call_sv(sv, G_SCALAR);
-  // TODO: deal with error flag. will just crash process for now.
+  // TOD: deal with error flag. will just crash process for now.
 
   SPAGAIN;
 

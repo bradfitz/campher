@@ -6,29 +6,54 @@ Perl in Go.
 
 Example of the awesomeness / horror:
 
-  p := perl.NewInterpreter()
-  p.Eval(`$foo = "bar";`)
-  fmt.Println("foo is:", p.EvalString("$foo"))
+=========
+ INSTALL
+=========
 
-  cv := p.Eval(`sub { my ($a1, $a2, $func) = @_; $func->($a1, $a2); }`).CV()
-  var ret *SV
+$ goinstall https://github.com/bradfitz/campher
 
-  ret = cv.Call(1, 2, func(a, b int) int { return a + b })
-  if e, g := 3, ret.Int(); e != g {
-          t.Errorf("test 1 expected %v, got %v", e, g)
-  }
+=========
+ EXAMPLE
+=========
 
-  ret = cv.Call(1, 2, func(a, b string) string { return a + b })
-  if e, g := "12", ret.String(); e != g {
-          t.Errorf("test 2 expected %v, got %v", e, g)
-  }
+package main
 
-  ret = cv.Call(1, "two", func(a, b string) string { return a + strings.ToUpper(b) })
-  if e, g := "1TWO", ret.String(); e != g {
-          t.Errorf("test 3 expected %v, got %v", e, g)
-  }
+import (
+	"fmt"
+	"strings"
 
-  ret = cv.Call(7, 8, func(a, b int) bool { return a < b })
-  if e, g := "1", ret.String(); e != g {
-          t.Errorf("test 4 expected %v, got %v", e, g)
-  }
+	"github.com/bradfitz/campher/perl"
+)
+
+func main() {
+	p := perl.NewInterpreter()
+	p.Eval(`$foo = "bar";`)
+	fmt.Println("foo is:", p.EvalString("$foo"))
+
+	cv := p.Eval(`sub { my ($a1, $a2, $func) = @_; $func->($a1, $a2); }`).CV()
+	var ret *SV
+	p := perl.NewInterpreter()
+	foo := p.Eval(`$foo = sub {
+ my ($op, $v1, $v2) = @_;
+ return "Perl says: " . $op->($v1, $v2);
+};`)
+	concat := func(a, b string) string { return a + b }
+	fmt.Println("concat:", foo.CV().Call(concat, "foo", "bar"))
+
+	base := 0
+	add := func(a, b int) int {
+		base++
+		return a + b + base
+	}
+	fmt.Println("add:", foo.CV().Call(add, 1, "40"))
+	fmt.Println("add:", foo.CV().Call(add, 1, "40"))
+}
+
+
+================
+ EXAMPLE OUTPUT
+================
+
+concat: Perl says: foobar
+add: Perl says: 42
+add: Perl says: 43

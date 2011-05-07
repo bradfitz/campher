@@ -19,7 +19,6 @@ import (
 )
 
 var _ = log.Printf
-var _ = reflect.Typeof
 
 func init() {
 	C.campher_init()
@@ -169,7 +168,7 @@ func (ip *Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	case *CV:
 		return val.sv
 	}
-	ftype := reflect.Typeof(arg)
+	ftype := reflect.TypeOf(arg)
 	if ftype.Kind() == reflect.Func {
 		cv := ip.NewCV(func(args ...*SV) interface{} {
 			callArg := make([]reflect.Value, ftype.NumIn())
@@ -182,11 +181,11 @@ func (ip *Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 				kind := ftype.In(i).Kind()
 				switch kind {
 				case reflect.Bool:
-					callArg[i] = reflect.NewValue(args[i].Bool())
+					callArg[i] = reflect.ValueOf(args[i].Bool())
 				case reflect.Int:
-					callArg[i] = reflect.NewValue(args[i].Int())
+					callArg[i] = reflect.ValueOf(args[i].Int())
 				case reflect.String:
-					callArg[i] = reflect.NewValue(args[i].String())
+					callArg[i] = reflect.ValueOf(args[i].String())
 				default:
 					panic(fmt.Sprintf("unsupported func callback arg type of kind: %d", kind))
 				}
@@ -194,7 +193,7 @@ func (ip *Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 			if ftype.NumOut() != 1 {
 				panic(fmt.Sprintf("unsupported func callback returning %d arguments (only 1 supported now)", ftype.NumOut()))
 			}
-			fval := reflect.NewValue(arg)
+			fval := reflect.ValueOf(arg)
 			results := fval.Call(callArg)
 			switch ftype.Out(0).Kind() {
 			case reflect.Bool:

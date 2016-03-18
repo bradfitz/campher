@@ -155,7 +155,7 @@ func TestGoCallback(t *testing.T) {
 	wantArgs := []string{"5", "six", "7", "8"}
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Errorf(" got args: %#v\n"+
-			"want args: %#v\n",gotArgs, wantArgs)
+			"want args: %#v\n", gotArgs, wantArgs)
 	}
 }
 

@@ -27,11 +27,11 @@ limitations under the License.
 package perl
 
 /*
-#cgo CFLAGS: -D_REENTRANT -D_GNU_SOURCE -DDEBIAN -fno-strict-aliasing -pipe -fstack-protector -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64  -I/usr/lib/perl/5.10/CORE
-#cgo LDFLAGS: -Wl,-E  -fstack-protector -L/usr/local/lib  -L/usr/lib/perl/5.10/CORE -lperl -ldl -lm -lpthread -lc -lcrypt
+#cgo CFLAGS: -D_REENTRANT -D_GNU_SOURCE -DDEBIAN -fno-strict-aliasing -pipe -fstack-protector -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/System/Library/Perl/5.18/darwin-thread-multi-2level/CORE -I/usr/lib/perl/5.10/CORE
+#cgo LDFLAGS:  -fstack-protector -L/usr/local/lib  -L/System/Library/Perl/5.18/darwin-thread-multi-2level/CORE -L/usr/lib/perl/5.10/CORE -lperl -ldl -lm -lpthread -lc
 #include <EXTERN.h>
 #include <perl.h>
-#include "campher.c"
+#include "campher.h"
 */
 import "C"
 
@@ -51,7 +51,7 @@ func init() {
 }
 
 type Interpreter struct {
-	perl  *_Ctypedef_PerlInterpreter
+	perl  *C.struct_interpreter
 	undef *SV // lazily initialized
 }
 
@@ -179,7 +179,7 @@ func (sv *SV) Bool() bool {
 }
 
 var dummySVPtr *C.SV
-var svPtrSize = unsafe.Sizeof(dummySVPtr)
+var svPtrSize = int(unsafe.Sizeof(dummySVPtr))
 
 func (ip *Interpreter) rawSvForFuncCall(arg interface{}) *C.SV {
 	switch val := arg.(type) {

@@ -135,9 +135,13 @@ NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
   return SvNVx(sv);
 }
 
-svtype campher_get_sv_type(PerlInterpreter* my_perl, SV* sv) {
+SV* campher_get_sv_cv(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
-  return SvTYPE(sv);
+  if (SvTYPE(sv) == SVt_PVCV)
+    return sv;
+  else if (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV)
+    return SvRV(sv);
+  return NULL;
 }
 
 // arg is NULL-terminated and caller must free.

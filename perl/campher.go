@@ -275,14 +275,13 @@ func (cv *CV) CallVoid(args ...interface{}) {
 
 // CV returns an SV's code value or nil if the SV is not of that type.
 func (sv *SV) CV() *CV {
-	t := C.campher_get_sv_type(sv.ip.perl, sv.sv)
-	if t&C.SVt_PVCV == 0 {
-		log.Printf("t = %d; wanted = %d", t, C.SVt_PVCV)
+	cv := C.campher_get_sv_cv(sv.ip.perl, sv.sv)
+	if cv == nil {
+		log.Printf("SV is not CV")
 		return nil
 	}
 	// inc the ref?
-	cv := (*CV)(sv)
-	return cv
+	return &CV{sv.ip, cv}
 }
 
 func (ip *Interpreter) Eval(str string) *SV {

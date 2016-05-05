@@ -1,10 +1,13 @@
+#include <stdlib.h>
+#include "EXTERN.h"
+#include "perl.h"
 #include "XSUB.h"
 
 static int dummy_argc = 3;
 static char** dummy_argv;
 static char** dummy_env;
  
-static void campher_init() {
+void campher_init() {
   dummy_argv = malloc(sizeof(char*) * 3);
   dummy_env = malloc(sizeof(char*) * 2);
   dummy_argv[0] = "campher";
@@ -15,7 +18,7 @@ static void campher_init() {
   PERL_SYS_INIT3(&dummy_argc,&dummy_argv,&dummy_env);
 }
 
-static void campher_set_context(PerlInterpreter* perl) {
+void campher_set_context(PerlInterpreter* perl) {
   PERL_SET_CONTEXT(perl);
 }
 
@@ -25,7 +28,8 @@ static void xs_init (pTHX);
 
 EXTERN_C void boot_DynaLoader (pTHX_ CV* cv);
 
-extern void callCampherGoFunc(void* fnAddr, int narg, SV** args, SV** out_ret);
+// SV** args, SV** out_ret
+extern void callCampherGoFunc(void* fnAddr, int narg, void* args, void* out_ret);
 
 XS(XS_Campher_callback);
 XS(XS_Campher_callback) {
@@ -60,7 +64,7 @@ xs_init(pTHX)
   newXS("Campher::callback", XS_Campher_callback, file);
 }
 
-static PerlInterpreter* campher_new_perl() {
+PerlInterpreter* campher_new_perl() {
   PerlInterpreter* my_perl = perl_alloc();
   PERL_SET_CONTEXT(my_perl);
   perl_construct(my_perl);
@@ -70,7 +74,7 @@ static PerlInterpreter* campher_new_perl() {
   return my_perl;
 }
 
-static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
+SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
   PERL_SET_CONTEXT(my_perl);
   SV* ret = eval_pv(code, TRUE);
   // TODO: this might already be done and thus wrong + leaky:
@@ -78,47 +82,47 @@ static SV* campher_eval_pv(PerlInterpreter* my_perl, char* code) {
   return ret;
 }
 
-static SV* campher_new_mortal_sv_int(PerlInterpreter* my_perl, int val) {
+SV* campher_new_mortal_sv_int(PerlInterpreter* my_perl, int val) {
   PERL_SET_CONTEXT(my_perl);
   return sv_2mortal(newSViv(val));
 }
 
-static SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
+SV* campher_new_sv_int(PerlInterpreter* my_perl, int val) {
   PERL_SET_CONTEXT(my_perl);
   return newSViv(val);
 }
 
-static SV* campher_undef_sv(PerlInterpreter* my_perl) {
+SV* campher_undef_sv(PerlInterpreter* my_perl) {
   PERL_SET_CONTEXT(my_perl);
   return &PL_sv_undef;
 }
 
-static void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
+void campher_sv_decref(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   SvREFCNT_dec(sv);
 }
 
-static SV* campher_new_sv_string(PerlInterpreter* my_perl, char* c, int len) {
+SV* campher_new_sv_string(PerlInterpreter* my_perl, char* c, int len) {
   PERL_SET_CONTEXT(my_perl);
   return newSVpvn(c, len);
 }
 
-static SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
+SV* campher_mortal_sv_string(PerlInterpreter* my_perl, char* c, int len) {
   PERL_SET_CONTEXT(my_perl);
   return sv_2mortal(newSVpvn(c, len));
 }
 
-static int campher_get_sv_int(PerlInterpreter* my_perl, SV* sv) {
+int campher_get_sv_int(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   return SvIVx(sv);
 }
 
-static int campher_get_sv_bool(PerlInterpreter* my_perl, SV* sv) {
+int campher_get_sv_bool(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   return SvTRUE(sv);
 }
 
-static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
+void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_char, int* out_len) {
   PERL_SET_CONTEXT(my_perl);
   STRLEN len;
   char* c = SvPVutf8x(sv, len);
@@ -126,18 +130,22 @@ static void campher_get_sv_string(PerlInterpreter* my_perl, SV* sv, char** out_c
   *out_len = len;
 }
 
-static NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
+NV campher_get_sv_float(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
   return SvNVx(sv);
 }
 
-static svtype campher_get_sv_type(PerlInterpreter* my_perl, SV* sv) {
+SV* campher_get_sv_cv(PerlInterpreter* my_perl, SV* sv) {
   PERL_SET_CONTEXT(my_perl);
-  return SvTYPE(sv);
+  if (SvTYPE(sv) == SVt_PVCV)
+    return sv;
+  else if (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV)
+    return SvRV(sv);
+  return NULL;
 }
 
 // arg is NULL-terminated and caller must free.
-static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
+void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
   PERL_SET_CONTEXT(my_perl);
 
   dSP;
@@ -164,7 +172,7 @@ static void campher_call_sv_void(PerlInterpreter* my_perl, SV* sv, SV** arg) {
 }
 
 // arg is NULL-terminated and caller must free.
-static void campher_call_sv_scalar(PerlInterpreter* my_perl, SV* sv, SV** arg, SV** ret) {
+void campher_call_sv_scalar(PerlInterpreter* my_perl, SV* sv, SV** arg, SV** ret) {
   PERL_SET_CONTEXT(my_perl);
 
   dSP;

@@ -10,7 +10,7 @@ Example of the awesomeness / horror:
  INSTALL
 =========
 
-$ goinstall https://github.com/bradfitz/campher
+$ go get github.com/bradfitz/campher
 
 =========
  EXAMPLE
